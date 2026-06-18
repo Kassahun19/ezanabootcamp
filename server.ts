@@ -23,15 +23,20 @@ app.use(express.urlencoded({ extended: true }));
 
 // CORS (allow frontend to call this API)
 app.use((req, res, next) => {
-  res.setHeader("Access-Control-Allow-Origin", "http://localhost:3000");
+  // In production (e.g. Vercel), the frontend origin is not localhost.
+  // Reflect Origin if present; otherwise allow same-origin.
+  const origin = req.headers.origin;
+  if (origin) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+  } else {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+  }
+
   res.setHeader(
     "Access-Control-Allow-Methods",
     "GET,POST,PUT,PATCH,DELETE,OPTIONS",
   );
-  res.setHeader(
-    "Access-Control-Allow-Headers",
-    "Content-Type, Authorization",
-  );
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
   res.setHeader("Access-Control-Allow-Credentials", "true");
 
   if (req.method === "OPTIONS") {
@@ -41,7 +46,6 @@ app.use((req, res, next) => {
 
   next();
 });
-
 
 // Upload folder setup
 const uploadsDir = path.join(process.cwd(), "server", "uploads");
@@ -164,11 +168,9 @@ const requireRole = (allowedRoleIds: number[]) => {
     next: express.NextFunction,
   ) => {
     if (!req.user || !allowedRoleIds.includes(req.user.roleId)) {
-      res
-        .status(403)
-        .json({
-          message: "Access Denied. You do not possess the required privileges.",
-        });
+      res.status(403).json({
+        message: "Access Denied. You do not possess the required privileges.",
+      });
       return;
     }
     next();
@@ -235,12 +237,10 @@ app.post("/api/auth/register", (req, res) => {
   }
 
   if (cleanPassword.length < 6) {
-    res
-      .status(400)
-      .json({
-        message:
-          "Password must be at least 6 characters long for optimal system lock.",
-      });
+    res.status(400).json({
+      message:
+        "Password must be at least 6 characters long for optimal system lock.",
+    });
     return;
   }
 
@@ -326,12 +326,10 @@ app.post("/api/auth/login", (req, res) => {
     } else {
       attempt.count += 1;
       if (attempt.count > maxAttempts) {
-        res
-          .status(429)
-          .json({
-            message:
-              "Too many authentication attempts. Please wait 1 minute before trying again.",
-          });
+        res.status(429).json({
+          message:
+            "Too many authentication attempts. Please wait 1 minute before trying again.",
+        });
         return;
       }
     }
@@ -359,12 +357,9 @@ app.post("/api/auth/login", (req, res) => {
   }
 
   if (user.status === "suspended") {
-    res
-      .status(403)
-      .json({
-        message:
-          "This account has been temporarily suspended. Contact support.",
-      });
+    res.status(403).json({
+      message: "This account has been temporarily suspended. Contact support.",
+    });
     return;
   }
 
@@ -513,11 +508,9 @@ app.put(
     }
     const { name, phoneNumber } = req.body;
     if (!name || name.trim().length < 2) {
-      res
-        .status(400)
-        .json({
-          message: "A valid name with at least 2 characters is required.",
-        });
+      res.status(400).json({
+        message: "A valid name with at least 2 characters is required.",
+      });
       return;
     }
     const updatedUser = dbStore.update("users", req.user.id, {
@@ -566,11 +559,9 @@ app.post(
       return;
     }
     if (newPassword.length < 6) {
-      res
-        .status(400)
-        .json({
-          message: "Secret password must contain at least 6 characters.",
-        });
+      res.status(400).json({
+        message: "Secret password must contain at least 6 characters.",
+      });
       return;
     }
     const salt = bcrypt.genSaltSync(10);
@@ -594,11 +585,9 @@ app.delete(
         .getTable("users")
         .filter((u) => u.roleId === 1).length;
       if (adminCount <= 1) {
-        res
-          .status(400)
-          .json({
-            message: "Cannot erase the sole System Master Administrator.",
-          });
+        res.status(400).json({
+          message: "Cannot erase the sole System Master Administrator.",
+        });
         return;
       }
     }
@@ -715,11 +704,9 @@ app.post(
       tags,
     } = req.body;
     if (!title || !description || !category) {
-      res
-        .status(400)
-        .json({
-          message: "Course title, description, and category are mandatory.",
-        });
+      res.status(400).json({
+        message: "Course title, description, and category are mandatory.",
+      });
       return;
     }
 
@@ -947,11 +934,9 @@ app.post(
   uploadVideo.single("video"),
   (req: AuthenticatedRequest, res) => {
     if (!req.file) {
-      res
-        .status(400)
-        .json({
-          message: "No video file was uploaded, or the format is unsupported.",
-        });
+      res.status(400).json({
+        message: "No video file was uploaded, or the format is unsupported.",
+      });
       return;
     }
     const url = `/uploads/videos/${req.file.filename}`;
@@ -1008,11 +993,9 @@ app.get(
       const videos = await fetchYoutubePlaylist(playlistId);
       res.json(videos);
     } catch (err: any) {
-      res
-        .status(500)
-        .json({
-          message: err.message || "Error loading YouTube playlist tracks.",
-        });
+      res.status(500).json({
+        message: err.message || "Error loading YouTube playlist tracks.",
+      });
     }
   },
 );
@@ -1026,12 +1009,10 @@ app.post(
     const courseId = parseInt(req.params.id);
     const { moduleId, videos } = req.body;
     if (!moduleId || !videos || !Array.isArray(videos)) {
-      res
-        .status(400)
-        .json({
-          message:
-            "moduleId and a list of playlist videos represent required inputs.",
-        });
+      res.status(400).json({
+        message:
+          "moduleId and a list of playlist videos represent required inputs.",
+      });
       return;
     }
 
@@ -1132,12 +1113,10 @@ app.post("/api/lessons", authenticateToken, requireRole([1, 2]), (req, res) => {
     duration,
   } = req.body;
   if (!moduleId || !courseId || !title) {
-    res
-      .status(400)
-      .json({
-        message:
-          "moduleId, courseId, and custom lesson title represent required fields.",
-      });
+    res.status(400).json({
+      message:
+        "moduleId, courseId, and custom lesson title represent required fields.",
+    });
     return;
   }
 
@@ -1257,22 +1236,18 @@ app.post(
 
     const { refNumber, notes, paymentAmount, paymentMethod } = req.body;
     if (!refNumber) {
-      res
-        .status(400)
-        .json({
-          message:
-            "Please write down the transaction reference number (Txn ID/Reference).",
-        });
+      res.status(400).json({
+        message:
+          "Please write down the transaction reference number (Txn ID/Reference).",
+      });
       return;
     }
 
     const file = req.file;
     if (!file) {
-      res
-        .status(400)
-        .json({
-          message: "Please upload the receipt proof document (Image or PDF).",
-        });
+      res.status(400).json({
+        message: "Please upload the receipt proof document (Image or PDF).",
+      });
       return;
     }
 
@@ -1470,14 +1445,12 @@ app.post("/api/users", authenticateToken, requireRole([1]), (req, res) => {
     status: "active",
   });
 
-  res
-    .status(201)
-    .json({
-      id: newUser.id,
-      name: newUser.name,
-      email: newUser.email,
-      roleId: newUser.roleId,
-    });
+  res.status(201).json({
+    id: newUser.id,
+    name: newUser.name,
+    email: newUser.email,
+    roleId: newUser.roleId,
+  });
 });
 
 app.put("/api/users/:id", authenticateToken, requireRole([1]), (req, res) => {
@@ -1531,12 +1504,10 @@ app.delete(
 app.post("/api/lecturer/apply", (req, res) => {
   const { name, email, credentials, subjectArea, bio, cvUrl } = req.body;
   if (!name || !email || !credentials || !bio) {
-    res
-      .status(400)
-      .json({
-        message:
-          "Mandatory fields: name, email, credentials background, and bio.",
-      });
+    res.status(400).json({
+      message:
+        "Mandatory fields: name, email, credentials background, and bio.",
+    });
     return;
   }
 
@@ -1555,13 +1526,11 @@ app.post("/api/lecturer/apply", (req, res) => {
     cvUrl || "",
   ).catch((err) => console.error("Admin lecturer apply fail:", err));
 
-  res
-    .status(200)
-    .json({
-      success: true,
-      message:
-        "Your application has been received. Our curriculum board will revert back!",
-    });
+  res.status(200).json({
+    success: true,
+    message:
+      "Your application has been received. Our curriculum board will revert back!",
+  });
 });
 
 // 2. Direct Support Tickets
@@ -1586,12 +1555,10 @@ app.post(
       `A logged-in student has submitted an active support ticket request.\n\nFrom: ${req.user.name} (${req.user.email})\nSubject: ${subject}\n\nMessage:\n${message}`,
     ).catch((err) => console.error("Admin support ticket fail:", err));
 
-    res
-      .status(201)
-      .json({
-        success: true,
-        message: "Support ticket registered. Admin has been notified!",
-      });
+    res.status(201).json({
+      success: true,
+      message: "Support ticket registered. Admin has been notified!",
+    });
   },
 );
 
@@ -1613,12 +1580,10 @@ app.post("/api/greetings", (req, res) => {
     `A guest checked in with a quick greeting message!\n\nFrom: ${senderName} (${senderEmail})\n\nMessage Content:\n${message}`,
   ).catch((err) => console.error("Admin greeting notif fail:", err));
 
-  res
-    .status(201)
-    .json({
-      success: true,
-      message: "Message sent! Thank you for greeting us!",
-    });
+  res.status(201).json({
+    success: true,
+    message: "Message sent! Thank you for greeting us!",
+  });
 });
 
 // 4. Premium Upgrade Direct Request
@@ -1643,13 +1608,11 @@ app.post(
         `Remarks: ${remarks || "None"}`,
     ).catch((err) => console.error("Admin premium request fail:", err));
 
-    res
-      .status(200)
-      .json({
-        success: true,
-        message:
-          "Your upgrade request has been successfully filed with the admin!",
-      });
+    res.status(200).json({
+      success: true,
+      message:
+        "Your upgrade request has been successfully filed with the admin!",
+    });
   },
 );
 
@@ -1691,12 +1654,10 @@ app.post(
       `Student ${req.user.name} requested direct enrollment on course: ${course.title}\nID: #${courseId}`,
     ).catch((err) => console.error("Admin direct enrollment fail:", err));
 
-    res
-      .status(201)
-      .json({
-        success: true,
-        message: "Course enrollment successfully synchronized!",
-      });
+    res.status(201).json({
+      success: true,
+      message: "Course enrollment successfully synchronized!",
+    });
   },
 );
 
@@ -1728,12 +1689,9 @@ app.patch(
 app.post("/api/contact", (req, res) => {
   const { name, email, subject, message } = req.body;
   if (!name || !email || !subject || !message) {
-    res
-      .status(400)
-      .json({
-        message:
-          "Name, email, subject, and message represent mandatory inputs.",
-      });
+    res.status(400).json({
+      message: "Name, email, subject, and message represent mandatory inputs.",
+    });
     return;
   }
 
@@ -1767,13 +1725,11 @@ app.post("/api/contact", (req, res) => {
     `An external form submission was entered on the web portal.\n\nFrom: ${name} (${email})\nSubject: ${subject}\n\nMessage:\n${message}`,
   ).catch((err) => console.error("Admin contact notif failed:", err));
 
-  res
-    .status(201)
-    .json({
-      success: true,
-      message: "Your support inquiry has been transmitted successfully!",
-      contact,
-    });
+  res.status(201).json({
+    success: true,
+    message: "Your support inquiry has been transmitted successfully!",
+    contact,
+  });
 });
 
 app.get("/api/contact", authenticateToken, requireRole([1]), (req, res) => {
@@ -2857,11 +2813,9 @@ app.post(
       } = req.body;
 
       if (!quizId || !type || !questionText) {
-        res
-          .status(400)
-          .json({
-            message: "quizId, type, and questionText are required fields.",
-          });
+        res.status(400).json({
+          message: "quizId, type, and questionText are required fields.",
+        });
         return;
       }
 
@@ -3046,12 +3000,10 @@ app.post(
       try {
         client = getGeminiClient();
       } catch (e: any) {
-        res
-          .status(400)
-          .json({
-            message:
-              "AI Generation requires active configuration. Configure the process.env.GEMINI_API_KEY value!",
-          });
+        res.status(400).json({
+          message:
+            "AI Generation requires active configuration. Configure the process.env.GEMINI_API_KEY value!",
+        });
         return;
       }
 
@@ -3190,11 +3142,9 @@ Return a single JSON array containing objects matching this exact typescript int
       res.json({ success: true, questions: parsed });
     } catch (err: any) {
       console.error("Gemini question generation error:", err);
-      res
-        .status(500)
-        .json({
-          message: err.message || "Failed to generate AI questions cleanly.",
-        });
+      res.status(500).json({
+        message: err.message || "Failed to generate AI questions cleanly.",
+      });
     }
   },
 );
@@ -3285,12 +3235,9 @@ app.post(
   (req, res) => {
     const { courseId, title, description, dueDate } = req.body;
     if (!courseId || !title || !description) {
-      res
-        .status(400)
-        .json({
-          message:
-            "Course ID, title, and homework description cannot be empty.",
-        });
+      res.status(400).json({
+        message: "Course ID, title, and homework description cannot be empty.",
+      });
       return;
     }
     const assignment = dbStore.insert("assignments", {
@@ -3331,13 +3278,11 @@ app.post(
       gradedAt: null,
     });
 
-    res
-      .status(201)
-      .json({
-        success: true,
-        message: "Your assignment file has been safely uploaded for review.",
-        submission,
-      });
+    res.status(201).json({
+      success: true,
+      message: "Your assignment file has been safely uploaded for review.",
+      submission,
+    });
   },
 );
 
@@ -3375,12 +3320,9 @@ app.put(
     const { grade, feedback } = req.body;
 
     if (!grade) {
-      res
-        .status(400)
-        .json({
-          message:
-            "Please specify the evaluation grade (e.g. A, B, C, 85/100).",
-        });
+      res.status(400).json({
+        message: "Please specify the evaluation grade (e.g. A, B, C, 85/100).",
+      });
       return;
     }
 
@@ -3612,13 +3554,25 @@ async function startServer() {
       next: express.NextFunction,
     ) => {
       console.error("Express Error:", err);
-      res
-        .status(500)
-        .json({
-          message: err.message || "An unexpected server error occurred.",
-        });
+      res.status(500).json({
+        message: err.message || "An unexpected server error occurred.",
+      });
     },
   );
+
+  // Ensure DB is installed/seeded before accepting requests.
+  // Vercel instances may have a missing/unwritable filesystem, so we seed if empty.
+  try {
+    if (
+      !dbStore.getTable("courses") ||
+      dbStore.getTable("courses").length === 0
+    ) {
+      console.log("DB has no courses on startup. Auto-installing database...");
+      await dbStore.installDatabase();
+    }
+  } catch (e) {
+    console.error("DB auto-install failed (continuing):", e);
+  }
 
   // Start Express Backend Server on Port 3000
   app.listen(PORT, "0.0.0.0", () => {
